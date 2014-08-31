@@ -71,6 +71,8 @@ try:
         title = item[2];
         if title.find('<font color="red">') != -1:
             title =  title.replace(r'<font color="red">',"")
+        if title.find(r"<font color='#CCCCCC'>") != -1:
+            title =  title.replace(r"<font color='#CCCCCC'>","")
         if title.find('</font>'):
             title =  title.replace(r'</font>',"")
         fb.add_item(title,subtitle="%s : http://www.bilibili.tv/video/%s"%(avtype,avnum),arg=avnum)
