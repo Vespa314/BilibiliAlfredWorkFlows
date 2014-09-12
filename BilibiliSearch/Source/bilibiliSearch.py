@@ -55,26 +55,20 @@ class Feedback():
         _icon.text = icon
 
 query = '{query}'
-url = "http://www.bilibili.com/search?code=utf-8&keyword=%s&orderby=&formsubmit="%query
+url = "http://www.bilibili.com/search?keyword=%s&orderby=&formsubmit="%query
 req = urllib2.Request(url = url);
 content = urllib2.urlopen(req,timeout = 10).read();
 content = zlib.decompress(content, 16+zlib.MAX_WBITS)
 
-reg = r'<div class="r"><a href="http://www.bilibili.tv/video/av(\d+)/" target="_blank"><div class="t"><span>(.*)</span>(.*)</div></a>';
-result = re.findall(reg,content)
+reg = r'<div class="r"><a href="http://www.bilibili.tv/video/av(\d+)/" target="_blank"><div class="t"><span>([^<]*)</span>([^<]*)</div></a>';
+result = re.findall(reg,content,re.S)
 fb = Feedback()
 
 try:
     for item in result:
         avnum =  item[0]
         avtype = item[1]
-        title = item[2];
-        if title.find('<font color="red">') != -1:
-            title =  title.replace(r'<font color="red">',"")
-        if title.find(r"<font color='#CCCCCC'>") != -1:
-            title =  title.replace(r"<font color='#CCCCCC'>","")
-        if title.find('</font>'):
-            title =  title.replace(r'</font>',"")
+        title = item[2].strip()
         fb.add_item(title,subtitle="%s : http://www.bilibili.tv/video/%s"%(avtype,avnum),arg=avnum)
     
 except SyntaxError as e:
