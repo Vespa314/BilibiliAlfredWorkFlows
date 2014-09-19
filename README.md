@@ -5,8 +5,9 @@
 
 选中搜索结果中的视频回车即可直接在浏览器中打开；
 
+```
 ![image](http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-10.png)
- 
+```
 
 > 如按下文配置好[biligrab-danmaku2ass](https://github.com/m13253/biligrab-danmaku2ass)及[you-get](https://github.com/soimort/you-get)，选中搜索结果中的视频，按住`cmd`然后回车即可使用mpv本地播放视频，按住`ctrl`再回车可以查看高清视频；【因为macbook观看弹幕视频发热太过严重，这个方法不仅可以有效解决这个问题，并且新番可以**跳广告**！！】,按住`alt`再回车可以下载视频【如果可以的话】；
 
@@ -21,12 +22,13 @@
 * 输入`wn`可以查看`周n`更新的视频，比如`bgm w3`就是查看周三更新的视频
 * 前面的各种命令前面加个`3`可以查看三次元新番
 
+```
 ![image](http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-11.png)
 ![image](http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-12.png)
 ![image](http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-13.png)
 ![image](http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-14.png)
 ![image](http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-15.png)
-
+```
 
 
 > 比较讨厌的有两点，一是这些更新顺序我代码中明明是按和现在接近程序顺序输出的，但是显示出来却不全是，貌似跟你最近点击有关。。
@@ -52,12 +54,15 @@
 	* 收藏数:`sc`
 	* 评论数:`pl`
 	* 硬币数:`yb`
+```
 ![image](http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-16.png)
-
+```
 
 > 举个例子，你想查看`60天`内`音乐区` `硬币数`最高的视频：那么输入`bhot d60ybyy`【参数顺序随便写，比如`bhot ybyyd60`也可以】
 
+```
 ![image](http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-17.png)
+```
 
 > 如按下文配置好[biligrab-danmaku2ass](https://github.com/m13253/biligrab-danmaku2ass)及[you-get](https://github.com/soimort/you-get)，选中搜索结果中的视频，按住`cmd`然后回车即可使用mpv本地播放视频，按住`ctrl`再回车可以查看高清视频；【因为macbook观看弹幕视频发热太过严重，这个方法不仅可以有效解决这个问题，并且新番可以**跳广告**！！】,按住`alt`再回车可以下载视频【如果可以的话】；
 
