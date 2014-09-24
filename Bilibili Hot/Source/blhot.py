@@ -159,7 +159,7 @@ vediolist = GetRank(appkey,zone,begin=[beginday.year,beginday.month,beginday.day
 try:
     for bgm in vediolist:
         if bgm.tid not in [33,32,94]:
-            fb.add_item("%s(%d)"%(bgm.title,bgm.guankan),subtitle="【%s】%s"%(bgm.author.name,bgm.description),arg=bgm.aid)
+            fb.add_item("%s(%s)"%(bgm.title,str(bgm.guankan)),subtitle="【%s】%s"%(bgm.author.name,bgm.description),arg=bgm.aid)
     
 except SyntaxError as e:
     if ('EOF', 'EOL' in e.msg):
