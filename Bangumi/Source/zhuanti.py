@@ -35,5 +35,5 @@ query = '{query}'
 # r:最近更新
 # 3：三次元
 # wn:查询星期n
-
-GetVedioOfZhuanti(query,bangumi = 1)
+temp = query.split("---")
+GetVedioOfZhuanti(temp[0],bangumi = 1,season_id=temp[1])

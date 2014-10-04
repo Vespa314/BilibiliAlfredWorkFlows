@@ -56,12 +56,13 @@ def GetGangumi(appkey,btype,weekday,mode,week):
         bangumi.weekday = bgm['weekday']
         bangumi.bgmcount = bgm['bgmcount']
         bangumi.spid = bgm['spid']
+        bangumi.season_id = bgm['season_id']
         bangumilist.append(bangumi)
     if mode == 'r':
         bangumilist = sorted(bangumilist,key=lambda x:x.lastupdate)
         bangumilist.reverse();
-        if len(bangumilist) > 20:
-            bangumilist = bangumilist[0:20]
+        if len(bangumilist) > 30:
+            bangumilist = bangumilist[0:30]
     return bangumilist
         
 def datetime_timestamp(dt):
@@ -117,7 +118,7 @@ if opt != []:
 bangumilist = GetGangumi(appkey,btype = qtype,weekday=0,mode = qmode,week = qweek);
 try:
     for bgm in bangumilist:
-        fb.add_item(bgm.title,subtitle="【周%s】最后更新时间:%s,现有%s集"%(Getweek(bgm.weekday),bgm.lastupdate_at,bgm.bgmcount),arg=str(bgm.spid))
+        fb.add_item(bgm.title,subtitle="【周%s】最后更新时间:%s,现有%s集"%(Getweek(bgm.weekday),bgm.lastupdate_at,bgm.bgmcount),arg=str(bgm.spid)+"---"+str(bgm.season_id))
     
 except SyntaxError as e:
     if ('EOF', 'EOL' in e.msg):
