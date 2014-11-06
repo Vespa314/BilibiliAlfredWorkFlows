@@ -10,6 +10,10 @@
 
 > 如按下文配置好[biligrab-danmaku2ass](https://github.com/m13253/biligrab-danmaku2ass)及[you-get](https://github.com/soimort/you-get)，选中搜索结果中的视频，按住`cmd`然后回车即可使用mpv本地播放视频，按住`ctrl`再回车可以查看高清视频；【因为macbook观看弹幕视频发热太过严重，这个方法不仅可以有效解决这个问题，并且新番可以**跳广告**！！】,按住`alt`再回车可以下载视频【如果可以的话】；
 
+11/07更新：
+按住shift可以下载弹幕文件到桌面
+
+
 ## B站新番
 介绍可以参见[博客](http://www.kylen314.com/archives/6670)
 
