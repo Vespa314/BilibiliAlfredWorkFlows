@@ -60,7 +60,7 @@ req = urllib2.Request(url = url);
 content = urllib2.urlopen(req,timeout = 10).read();
 content = zlib.decompress(content, 16+zlib.MAX_WBITS)
 
-reg = r'<div class="r"><a href="http://www.bilibili.tv/video/av(\d+)/" target="_blank"><div class="t"><span>([^<]*)</span>([^<]*)</div></a>';
+reg = r'<div class="r"><a href="http://www.bilibili.com/video/av(\d+)/" target="_blank"><div class="t"><span>([^<]*)</span>([^<]*)</div></a>';
 result = re.findall(reg,content,re.S)
 fb = Feedback()
 
@@ -69,7 +69,7 @@ try:
         avnum =  item[0]
         avtype = item[1]
         title = item[2].strip()
-        fb.add_item(title,subtitle="%s : http://www.bilibili.tv/video/%s"%(avtype,avnum),arg=avnum)
+        fb.add_item(title,subtitle="%s : http://www.bilibili.com/video/%s"%(avtype,avnum),arg=avnum)
     
 except SyntaxError as e:
     if ('EOF', 'EOL' in e.msg):
