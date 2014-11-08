@@ -69,6 +69,19 @@
 
 > 如按下文配置好[biligrab-danmaku2ass](https://github.com/m13253/biligrab-danmaku2ass)及[you-get](https://github.com/soimort/you-get)，选中搜索结果中的视频，按住`cmd`然后回车即可使用mpv本地播放视频，按住`ctrl`再回车可以查看高清视频；【因为macbook观看弹幕视频发热太过严重，这个方法不仅可以有效解决这个问题，并且新番可以**跳广告**！！】,按住`alt`再回车可以下载视频【如果可以的话】；
 
+## 获取弹幕ASS文件以供本地播放
+关键字:`danmu`
+
+使用方法：
+danmu加上视频URL地址即可，比如：
+* danmu http://www.bilibili.com/video/av510515/index_3.html
+* danmu http://www.bilibili.com/video/av1687261/
+
+然后转换成功的话可以获得ASS文件，请到桌面查找
+
+> 有些时候一些新番的的弹幕需要登录才可以获取，这里没有实现。。。也不会去实现。。
+
+
 ## 配合使用的系统设置
 首先完成以下三项配置：
 * [you-get](https://github.com/soimort/you-get)
