@@ -461,6 +461,6 @@ if cid != '':
     t[1] = t[1].replace(r'/','');
     Danmaku2ASS(GetDanmuku(t[0]),r'%s/Desktop/%s-%s.ass'%(os.path.expanduser('~'),t[1],t[2]), 640, 360, 0, 'sans-serif', 15, 0.5, 10, False)
     if t[2] == '1':
-        print t[0]
+        print t[1]
     else:
         print '%s(%s p)'%(t[1],t[2])
