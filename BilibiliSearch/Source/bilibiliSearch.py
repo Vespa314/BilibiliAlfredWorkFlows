@@ -59,8 +59,10 @@ url = "http://www.bilibili.com/search?keyword=%s&orderby=&formsubmit="%query
 req = urllib2.Request(url = url);
 content = urllib2.urlopen(req,timeout = 10).read();
 content = zlib.decompress(content, 16+zlib.MAX_WBITS)
+content = content.replace("<label class='keyword'>",'')
+content = content.replace("</label>",'')
 
-reg = r'<div class="r"><a href="http://www.bilibili.com/video/av(\d+)/" target="_blank"><div class="t"><span>([^<]*)</span>([^<]*)</div></a>';
+reg = r'<div class="r_sp"><a href="http://www.bilibili.com/video/av(\d+)" target="_blank">\s*<div class="t"><span>([^<]*)</span>\s*([^<]*)</div>\s*</a>';
 result = re.findall(reg,content,re.S)
 fb = Feedback()
 
