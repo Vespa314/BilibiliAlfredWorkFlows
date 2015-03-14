@@ -1,21 +1,23 @@
 ## B站搜索
-介绍可以参见[博客](http://www.kylen314.com/archives/6670)
+~~介绍可以参见[博客](http://www.kylen314.com/archives/6670)~~
 
 关键字：`bl` (喂，`bl`是`b`i`l`i的简写啊！)
 
-选中搜索结果中的视频回车即可直接在浏览器中打开；
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bl1.png)
 
-<img src = "http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-10.png" />
-
-
-> 如按下文配置好[biligrab-danmaku2ass](https://github.com/m13253/biligrab-danmaku2ass)及[you-get](https://github.com/soimort/you-get)，选中搜索结果中的视频，按住`cmd`然后回车即可使用mpv本地播放视频，按住`ctrl`再回车可以查看高清视频；【因为macbook观看弹幕视频发热太过严重，这个方法不仅可以有效解决这个问题，并且新番可以**跳广告**！！】,按住`alt`再回车可以下载视频【如果可以的话】；
+如按下文配置好[biligrab-danmaku2ass](https://github.com/m13253/biligrab-danmaku2ass)及[you-get](https://github.com/soimort/you-get)，选中搜索结果中的视频：
+* 回车直接在默认浏览器中打开视频
+* 按住`cmd`然后回车即可使用mpv本地播放视频
+* 按住`ctrl`再回车可以查看高清视频；【因为macbook观看弹幕视频发热太过严重，这个方法不仅可以有效解决这个问题，并且新番可以**跳广告**！！】
+* 按住`alt`再回车可以下载视频【如果可以的话】；
 
 11/07更新：
-按住shift可以下载弹幕文件到桌面
+按住`shift`可以下载弹幕文件到桌面
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bl2.gif)
 
 
-## B站新番
-介绍可以参见[博客](http://www.kylen314.com/archives/6670)
+~~## B站新番 Version 1 【已废弃】~~
+~~介绍可以参见[博客](http://www.kylen314.com/archives/6670)~~
 
 关键字：`bgm`
 
@@ -25,23 +27,30 @@
 * 输入`wn`可以查看`周n`更新的视频，比如`bgm w3`就是查看周三更新的视频
 * 前面的各种命令前面加个`3`可以查看三次元新番
 
-<img src = "http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-11.png" />
-<img src = "http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-13.png" />
-<img src = "http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-14.png" />
-<img src = "http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-15.png" />
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bgm1.png)
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bgm2.png)
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bgm3.png)
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bgm4.png)
 
-> 比较讨厌的有两点，一是这些更新顺序我代码中明明是按和现在接近程序顺序输出的，但是显示出来却不全是，貌似跟你最近点击有关。。
+> 比较讨厌的有两点，一是这些更新顺序我代码中明明是按更新时间顺序输出的，但是显示出来却不全是，貌似跟你最近点击有关。。
 >还有一点，获取到的新番信息里面包含封面的URL的，但是好像Alfred列表的每个选项前面的图标只能是本地icon，不然不显示。。
  
-## B站新番2
+## B站新番 Version 2
 由于上一个命令只能打开新番搜索页面，然后试图对选中的新番直接打开所在URL，但是无奈Alfred设计上的问题，无法直接选中新番然后像之前别的方法一般按着`cmd`就可以直接本地播放，于是暂时采用了一个迂回的方法：
 
-输入命令`bgms`，参数使用和`bgm`一样，然后选中回车将会把本地播放的命令复制到剪贴板，然后打开终端云顶即可，当然的，你需要按照本文末尾方法配制播放环境！！
+**输入命令`bgm`，然后选中新番，回车！！将会把本地播放的命令(也就是`bili —hd http://www.bilibili.com/video/avxxxxx`)复制到剪贴板，然后打开终端ctrl+V运行即可。（当然的，你需要按照本文末尾方法配制播放环境！！）**
 
-> 为了方便起见，`bgms`和`bgm`作用相反；也就是现在Workflow中`bgm`干的是`bgms`的活
+演示：
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bgm5.gif)
+
+> 忘了什么时候更新的功能，选中之后`cmd`+回车，会把url(http://www.bilibili.com/video/avxxxxx)复制到剪贴板，使用[这个脚本](https://github.com/Vespa314/bilibili-api/tree/master/GetVedioUrl)获取视频下载url，就可以直接扔迅雷下载了。。【唉，虽然现在版权越来越严。。】或者使用[弹幕下载的alfred](https://github.com/Vespa314/BilibiliAlfredWorkFlows/tree/master/GetAssFromBilibili)或者[脚本](https://github.com/Vespa314/bilibili-api/tree/master/GetDanmuAss)直接下载弹幕文件到本地【这样就可以在高铁上离线弹幕了！！】
+
+演示：
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bgm6.gif)
+
 
 ## B站排行
-介绍可以参见[博客](http://www.kylen314.com/archives/6670)
+~~介绍可以参见[博客](http://www.kylen314.com/archives/6670)~~
 
 关键字：`bhot`
 
@@ -60,14 +69,20 @@
 	* 评论数:`pl`
 	* 硬币数:`yb`
 
-<img src = "http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-16.png" />
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bhot1.png)
 
 > 举个例子，你想查看`60天`内`音乐区` `硬币数`最高的视频：那么输入`bhot d60ybyy`【参数顺序随便写，比如`bhot ybyyd60`也可以】
 
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bhot2.png)
 
-<img src = "http://www.kylen314.com/wp-content/uploads/2014/08/QQ20140831-17.png" />
+如按下文配置好[biligrab-danmaku2ass](https://github.com/m13253/biligrab-danmaku2ass)及[you-get](https://github.com/soimort/you-get)，选中搜索结果中的视频：
+* 回车直接在默认浏览器中打开视频
+* 按住`cmd`然后回车即可使用mpv本地播放视频
+* 按住`ctrl`再回车可以查看高清视频；【因为macbook观看弹幕视频发热太过严重，这个方法不仅可以有效解决这个问题，并且新番可以**跳广告**！！】
+* 按住`alt`再回车可以下载视频【如果可以的话】；
 
-> 如按下文配置好[biligrab-danmaku2ass](https://github.com/m13253/biligrab-danmaku2ass)及[you-get](https://github.com/soimort/you-get)，选中搜索结果中的视频，按住`cmd`然后回车即可使用mpv本地播放视频，按住`ctrl`再回车可以查看高清视频；【因为macbook观看弹幕视频发热太过严重，这个方法不仅可以有效解决这个问题，并且新番可以**跳广告**！！】,按住`alt`再回车可以下载视频【如果可以的话】；
+演示：
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bhot3.gif)
 
 ## 获取弹幕ASS文件以供本地播放
 关键字:`danmu`
@@ -105,9 +120,3 @@ xxxxxxx/bilidan.py $@
 ~/danmaku2ass/bilidan.py --d2aflags 'text_opacity=0.5' $@
 ```
 完成以上配置即可！！
-
-## 乱七八糟的演示
-<img src = “http://kylen314.qiniudn.com/zhihu_1.gif” />
-<img src = “http://kylen314.qiniudn.com/zhihu_2.gif” />
-<img src = “http://kylen314.qiniudn.com/zhihu_3.gif” />
-<img src = “http://kylen314.qiniudn.com/zhihu_4.gif” />
