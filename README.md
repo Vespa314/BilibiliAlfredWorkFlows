@@ -105,3 +105,9 @@ xxxxxxx/bilidan.py $@
 ~/danmaku2ass/bilidan.py --d2aflags 'text_opacity=0.5' $@
 ```
 完成以上配置即可！！
+
+## 乱七八糟的演示
+<img src = “http://kylen314.qiniudn.com/zhihu_1.gif” />
+<img src = “http://kylen314.qiniudn.com/zhihu_2.gif” />
+<img src = “http://kylen314.qiniudn.com/zhihu_3.gif” />
+<img src = “http://kylen314.qiniudn.com/zhihu_4.gif” />
