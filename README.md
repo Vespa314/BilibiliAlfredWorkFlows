@@ -43,7 +43,7 @@
 演示：
 ![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bgm5.gif)
 
-> 忘了什么时候更新的功能，选中之后`cmd`+回车，会把url(http://www.bilibili.com/video/avxxxxx)复制到剪贴板，使用[这个脚本](https://github.com/Vespa314/bilibili-api/tree/master/GetVedioUrl)获取视频下载url，就可以直接扔迅雷下载了。。【唉，虽然现在版权越来越严。。】或者使用[弹幕下载的alfred](https://github.com/Vespa314/BilibiliAlfredWorkFlows/tree/master/GetAssFromBilibili)或者[脚本](https://github.com/Vespa314/bilibili-api/tree/master/GetDanmuAss)直接下载弹幕文件到本地【这样就可以在高铁上离线弹幕了！！】
+> 忘了什么时候更新的功能，选中之后`cmd`+回车，会把url(http://www.bilibili.com/video/avxxxxx )复制到剪贴板，使用[这个脚本](https://github.com/Vespa314/bilibili-api/tree/master/GetVedioUrl) 获取视频下载url，就可以直接扔迅雷下载了。。【唉，虽然现在版权越来越严。。】或者使用[弹幕下载的alfred](https://github.com/Vespa314/BilibiliAlfredWorkFlows/tree/master/GetAssFromBilibili)或者[脚本](https://github.com/Vespa314/bilibili-api/tree/master/GetDanmuAss)直接下载弹幕文件到本地【这样就可以在高铁上离线弹幕了！！】
 
 演示：
 ![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/bgm6.gif)
