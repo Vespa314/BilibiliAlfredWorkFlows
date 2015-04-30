@@ -3,6 +3,7 @@
 import sys
 from Feedback import *
 from support import *
+import datetime
 def biliVedioSearch(keyword, order = 'default', pagesize = 20, page = 1):
     """
 根据关键词搜索视频
@@ -40,7 +41,7 @@ fb = Feedback()
 
 try:
     for video in videoList:
-        fb.add_item(video.title,subtitle="%s : http://www.bilibili.com/video/%s"%(video.typename,video.aid),arg=video.aid)
+        fb.add_item(video.title,subtitle="%s : http://www.bilibili.com/video/%s(%s)"%(video.typename,video.aid,datetime.datetime.utcfromtimestamp(video.date).strftime(r"%Y/%m/%d")),arg=video.aid)
 
 except SyntaxError as e:
     if ('EOF', 'EOL' in e.msg):
@@ -48,5 +49,5 @@ except SyntaxError as e:
     else:
         fb.add_item('SyntaxError', e.msg)
 except Exception as e:
-        fb.add_item(e.__class__.__name__,subtitle=e.message)    
+        fb.add_item(e.__class__.__name__,subtitle=e.message)
 print fb
