@@ -2,18 +2,14 @@
 """
 Created on Mon May 26 23:42:03 2014
 
-@author: Administrator
+@author: Vespa
 """
 
-
-from support import * 
+from support import *
 import hashlib
 import datetime
 import sys
-
-
-
-
+import datetime
 
 import xml.etree.ElementTree as et
 default_encoding = 'utf-8'
@@ -85,7 +81,7 @@ def GetSign(params,appkey,AppSecret=None):
     m = hashlib.md5()
     m.update(data+AppSecret)
     return data+'&sign='+m.hexdigest()
-    
+
 def GetRank(appkey,tid,begin=None,end=None,page = None,pagesize=None,click_detail =None,order = None,AppSecret=None):
     paras = {};
     paras['appkey']=appkey;
@@ -104,21 +100,22 @@ def GetRank(appkey,tid,begin=None,end=None,page = None,pagesize=None,click_detai
         paras['page']=GetString(page);
     if click_detail:
         paras['click_detail'] = click_detail;
-    url = 'http://api.bilibili.cn/list?' + GetSign(paras,appkey,AppSecret);   
+    url = 'http://api.bilibili.cn/list?' + GetSign(paras,appkey,AppSecret);
     jsoninfo = JsonInfo(url);
     vediolist = [];
     for i in range(len(jsoninfo.Getvalue('list'))-1):
         idx = str(i);
-        item = jsoninfo.Getvalue('list',idx);
-        vedio = Vedio(item['aid'],item['title']);
-        vedio.guankan = item['play']; 
-        vedio.tid = item['typeid']; 
+        item = jsoninfo.Getvalue('list',idx)
+        vedio = Vedio(item['aid'],item['title'])
+        vedio.guankan = item['play']
+        vedio.tid = item['typeid']
+        vedio.date = jsoninfo.Getvalue('list',idx,'create')
         vedio.author = User(item['mid'],item['author'])
-        vedio.description = item['description'];
-        vedio.duration = item['duration'];
+        vedio.description = item['description']
+        vedio.duration = item['duration']
         vediolist.append(vedio)
     return vediolist
-        
+
 query = '{query}'
 fb = Feedback()
 appkey = "03fc8eb101b091fb"
@@ -143,7 +140,7 @@ for k in zonelist:
         break
 if zone == None:
     zone = 0
-    
+
 opt = re.findall(r'd(\d+)',query)
 if opt != []:
     dayspan = int(opt[0])
@@ -153,19 +150,19 @@ if opt != []:
 
 endday = datetime.datetime.now()
 beginday = endday - datetime.timedelta(days =dayspan)
-            
-vediolist = GetRank(appkey,zone,begin=[beginday.year,beginday.month,beginday.day],end=[endday.year,endday.month,endday.day],page = None,pagesize=30,click_detail =None,order = mode,AppSecret=None)
+
+vediolist = GetRank(appkey,zone,begin=[beginday.year,beginday.month,beginday.day],end=[endday.year,endday.month,endday.day],page = None,pagesize=50,click_detail =None,order = mode,AppSecret=None)
 
 try:
     for bgm in vediolist:
         if bgm.tid not in [33,32,94]:
-            fb.add_item("%s(%s)"%(bgm.title,str(bgm.guankan)),subtitle="【%s】%s"%(bgm.author.name,bgm.description),arg=bgm.aid)
-    
+            fb.add_item("%s(%s)"%(bgm.title,(bgm.date.split(" "))[0]),subtitle="【%s】%s"%(bgm.author.name,bgm.description),arg=bgm.aid)
+
 except SyntaxError as e:
     if ('EOF', 'EOL' in e.msg):
         fb.add_item('...')
     else:
         fb.add_item('SyntaxError', e.msg)
 except Exception as e:
-        fb.add_item(e.__class__.__name__,subtitle=e.message)    
+        fb.add_item(e.__class__.__name__,subtitle=e.message)
 print fb
