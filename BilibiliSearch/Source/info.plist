@@ -99,91 +99,103 @@
 				<integer>36</integer>
 				<key>keyword</key>
 				<string>bl</string>
+				<key>queuedelaycustom</key>
+				<integer>1</integer>
+				<key>queuedelayimmediatelyinitially</key>
+				<false/>
+				<key>queuedelaymode</key>
+				<integer>0</integer>
+				<key>queuemode</key>
+				<integer>1</integer>
 				<key>runningsubtext</key>
 				<string>少女祈祷中</string>
 				<key>script</key>
 				<string># -*- coding: utf-8 -*-
 
 import sys
-import re
-import zlib
-import urllib2
+from Feedback import *
+from support import *
+import datetime
+import hashlib
 
-import xml.etree.ElementTree as et
-default_encoding = 'utf-8'
-if sys.getdefaultencoding() != default_encoding:
-    reload(sys)
-    sys.setdefaultencoding(default_encoding)
-
-class Feedback():
-    """Feeback used by Alfred Script Filter
-
-    Usage:
-        fb = Feedback()
-        fb.add_item('Hello', 'World')
-        fb.add_item('Foo', 'Bar')
-        print fb
-
+def GetSign(params, appkey, AppSecret=None):
     """
+    获取新版API的签名，不然会返回-3错误
+待添加：【重要！】
+    需要做URL编码并保证字母都是大写，如 %2F
+    """
+    params['appkey']=appkey
+    data = ""
+    paras = params.keys()
+    paras.sort()
+    for para in paras:
+        if data != "":
+            data += "&amp;"
+        data += para + "=" + str(params[para])
+    if AppSecret == None:
+        return data
+    m = hashlib.md5()
+    m.update(data+AppSecret)
+    return data+'&amp;sign='+m.hexdigest()
 
-    def __init__(self):
-        self.feedback = et.Element('items')
+def biliVideoSearch(appkey, AppSecret, keyword, order = 'default', pagesize = 20, page = 1):
+    """
+【注】：
+    旧版Appkey不可用，必须配合AppSecret使用！！
 
-    def __repr__(self):
-        """XML representation used by Alfred
-
-        Returns:
-            XML string
-        """
-        return et.tostring(self.feedback)
-
-    def add_item(self, title, subtitle = "", arg = "", valid = "yes", autocomplete = "", icon = "icon.png"):
-        """
-        Add item to alfred Feedback
-
-        Args:
-            title(str): the title displayed by Alfred
-        Keyword Args:
-            subtitle(str):    the subtitle displayed by Alfred
-            arg(str):         the value returned by alfred when item is selected
-            valid(str):       whether or not the entry can be selected in Alfred to trigger an action
-            autcomplete(str): the text to be inserted if an invalid item is selected. This is only used if 'valid' is 'no'
-            icon(str):        filename of icon that Alfred will display
-        """
-        item = et.SubElement(self.feedback, 'item', uid=str(len(self.feedback)), arg=arg, valid=valid, autocomplete=autocomplete)
-        _title = et.SubElement(item, 'title')
-        _title.text = title
-        _sub = et.SubElement(item, 'subtitle')
-        _sub.text = subtitle
-        _icon = et.SubElement(item, 'icon')
-        _icon.text = icon
+根据关键词搜索视频
+输入：
+    order：排序方式  默认default，其余待测试
+    keyword：关键词
+    pagesize:返回条目多少
+    page：页码
+    """
+    paras = {}
+    paras['keyword'] = GetString(keyword)
+    paras['order'] = GetString(order)
+    paras['pagesize'] = GetString(pagesize)
+    paras['page'] = GetString(page)
+    url =  'http://api.bilibili.cn/search?' + GetSign(paras, appkey, AppSecret)
+    jsoninfo = JsonInfo(url)
+    videolist = []
+    for video_idx in jsoninfo.Getvalue('result'):
+        if video_idx['type'] != 'video':
+            continue
+        video = Video(video_idx['aid'], video_idx['title'])
+        video.typename = video_idx['typename']
+        video.author = User(video_idx['mid'], video_idx['author'])
+        video.acurl = video_idx['arcurl']
+        video.description = video_idx['description']
+        video.arcrank = video_idx['arcrank']
+        video.cover = video_idx['pic']
+        video.guankan = video_idx['play']
+        video.danmu = video_idx['video_review']
+        video.shoucang = video_idx['favorites']
+        video.commentNumber = video_idx['review']
+        video.date = video_idx['pubdate']
+        video.tag = video_idx['tag'].split(',')
+        videolist.append(video)
+    return videolist
 
 query = '{query}'
-url = "http://www.bilibili.com/search?keyword=%s&amp;orderby=&amp;formsubmit="%query
-req = urllib2.Request(url = url);
-content = urllib2.urlopen(req,timeout = 10).read();
-content = zlib.decompress(content, 16+zlib.MAX_WBITS)
-
-reg = r'&lt;div class="r"&gt;&lt;a href="http://www.bilibili.com/video/av(\d+)/" target="_blank"&gt;&lt;div class="t"&gt;&lt;span&gt;([^&lt;]*)&lt;/span&gt;([^&lt;]*)&lt;/div&gt;&lt;/a&gt;';
-result = re.findall(reg,content,re.S)
+appkey = '70472776da900153'
+secretkey = 'f7d9146f9363f3407d31098918493336'
+videoList = biliVideoSearch(appkey,secretkey,query, pagesize = 30)
 fb = Feedback()
 
 try:
-    for item in result:
-        avnum =  item[0]
-        avtype = item[1]
-        title = item[2].strip()
-        fb.add_item(title,subtitle="%s : http://www.bilibili.com/video/%s"%(avtype,avnum),arg=avnum)
-    
+    for video in videoList:
+        fb.add_item(video.title,subtitle="%s : http://www.bilibili.com/video/%s(%s)"%(video.typename,video.aid,datetime.datetime.utcfromtimestamp(video.date).strftime(r"%Y/%m/%d")),arg=video.aid)
+
 except SyntaxError as e:
     if ('EOF', 'EOL' in e.msg):
         fb.add_item('...')
     else:
         fb.add_item('SyntaxError', e.msg)
 except Exception as e:
-        fb.add_item(e.__class__.__name__,subtitle=e.message)    
+        fb.add_item(e.__class__.__name__,subtitle=e.message)
 print fb
-    </string>
+</string>
 				<key>subtext</key>
 				<string>B站查询</string>
 				<key>title</key>
@@ -249,6 +261,8 @@ you-get http://www.bilibili.com/video/av{query}/</string>
 		<dict>
 			<key>config</key>
 			<dict>
+				<key>concurrently</key>
+				<false/>
 				<key>escaping</key>
 				<integer>127</integer>
 				<key>script</key>

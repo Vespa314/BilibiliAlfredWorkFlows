@@ -10,20 +10,22 @@ class User():
         if m_mid:
             self.mid = m_mid
         if m_name:
+            if isinstance(m_name,unicode):
+                m_name = m_name.encode('utf8')
             self.name = m_name
 #   获取空间地址
     def GetSpace(self):
         return 'http://space.bilibili.tv/'+str(self.mid)
     mid = None
     name = None
-    isApprove = False#是否是认证账号
-    spaceName = ""
-    sex = ""
+    isApprove = None#是否是认证账号
+    spaceName = None
+    sex = None
     rank = None
     avatar = None
-    follow = 0#关注好友数目
-    fans = 0#粉丝数目
-    article = 0#投稿数
+    follow = None#关注好友数目
+    fans = None#粉丝数目
+    article = None#投稿数
     place = None#所在地
     description = None#认证用户为认证信息 普通用户为交友宣言
     followlist = None#关注的好友列表
@@ -31,11 +33,13 @@ class User():
     DisplayRank = None
 
 
-class Vedio():
+class Video():
     def __init__(self,m_aid=None,m_title=None):
         if m_aid:
             self.aid = m_aid
         if m_title:
+            if isinstance(m_title,unicode):
+                m_title = m_title.encode('utf8')
             self.title = m_title
     aid = None
     title = None
@@ -66,6 +70,9 @@ class Vedio():
     instant_server = None
     src = None
     partname = None
+    allow_bp = None
+    allow_feed = None
+    created = None
 #播放信息：
     play_site = None
     play_forward = None
@@ -80,7 +87,7 @@ class Bangumi():
     bgmcount = None#番剧当前总集数
     title = None
     lastupdate_at = None
-    attention = None
+    attention = None #订阅数
     cover = None
     priority = None
     area = None
@@ -91,6 +98,8 @@ class Bangumi():
     mcover = None
     click = None
     season_id = None
+    click = None # 浏览数
+    video_view = None
 
 class Comment():
     def __init__(self):
@@ -111,6 +120,8 @@ class CommentList():
 class ZhuantiInfo():
     def __init__(self, m_spid,m_title):
         self.spid = m_spid
+        if isinstance(m_title,unicode):
+            m_title = m_title.encode('utf8')
         self.title = m_title
     spid = None
     title = None

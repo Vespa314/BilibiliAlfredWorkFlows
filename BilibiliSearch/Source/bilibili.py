@@ -2,451 +2,486 @@
 """
 Created on Mon May 26 23:42:03 2014
 
-@author: Administrator
+@author: Vespa
 """
 
 
-from support import * 
-import hashlib
-import io
-import xml.dom.minidom
-import random
-import math
-import os
+from support import *
 
-class safe_list(list):
-    def get(self, index, default=None):
-        try:
-            return self[index]
-        except IndexError:
-            return default
+############################常量定义
 
-# Calculation is based on https://github.com/jabbany/CommentCoreLibrary/issues/5#issuecomment-40087282
-#                     and https://github.com/m13253/danmaku2ass/issues/7#issuecomment-41489422
-# ASS FOV = width*4/3.0
-# But Flash FOV = width/math.tan(100*math.pi/360.0)/2 will be used instead
-# Result: (transX, transY, rotX, rotY, rotZ, scaleX, scaleY)
-def ConvertFlashRotation(rotY, rotZ, X, Y, width, height):
-    def WrapAngle(deg):
-        return 180-((180-deg) % 360)
-    rotY = WrapAngle(rotY)
-    rotZ = WrapAngle(rotZ)
-    if rotY in (90, -90):
-        rotY -= 1
-    if rotY == 0 or rotZ == 0:
-        outX = 0
-        outY = -rotY  # Positive value means clockwise in Flash
-        outZ = -rotZ
-        rotY *= math.pi/180.0
-        rotZ *= math.pi/180.0
+#####排序方式
+#收藏
+TYPE_SHOUCANG = 'stow'
+#评论数
+TYPE_PINGLUN = 'review'
+#播放数
+TYPE_BOFANG = 'hot'
+#硬币数
+TYPE_YINGBI = 'promote'
+#用户评分
+TYPE_PINGFEN = 'comment'
+#弹幕数
+TYPE_DANMU = 'damku'
+#拼音
+TYPE_PINYIN = 'pinyin'
+#投稿时间
+TYPE_TOUGAO = 'default'
+############################常量定义结束
+
+def GetPopularVideo(begintime, endtime, sortType=TYPE_BOFANG, zone=0, page=1, original=0):
+    """
+输入：
+    begintime：起始时间，三元数组[year1,month1,day1]
+    endtime：终止时间,三元数组[year2,month2,day2]
+    sortType：字符串，排序方式，参照TYPE_开头的常量
+    zone:整数，分区，参照api.md文档说明
+    page：整数，页数
+返回：
+    视频列表,包含AV号，标题，观看数，收藏数，弹幕数，投稿日期，封面，UP的id号和名字
+    """
+    # TYPE_PINYIN和TYPE_TOUGAO情况下zone不可以等于[0,1,3,4,5,36,11,13]
+    if sortType in [TYPE_PINYIN,TYPE_TOUGAO]:
+        if zone in [0,1,3,4,5,36,11,13]:
+            return []
+    #判断是否原创
+    if original:
+        ori = '-original'
     else:
-        rotY *= math.pi/180.0
-        rotZ *= math.pi/180.0
-        outY = math.atan2(-math.sin(rotY)*math.cos(rotZ), math.cos(rotY))*180/math.pi
-        outZ = math.atan2(-math.cos(rotY)*math.sin(rotZ), math.cos(rotZ))*180/math.pi
-        outX = math.asin(math.sin(rotY)*math.sin(rotZ))*180/math.pi
-    trX = (X*math.cos(rotZ)+Y*math.sin(rotZ))/math.cos(rotY)+(1-math.cos(rotZ)/math.cos(rotY))*width/2-math.sin(rotZ)/math.cos(rotY)*height/2
-    trY = Y*math.cos(rotZ)-X*math.sin(rotZ)+math.sin(rotZ)*width/2+(1-math.cos(rotZ))*height/2
-    trZ = (trX-width/2)*math.sin(rotY)
-    FOV = width*math.tan(2*math.pi/9.0)/2
-    try:
-        scaleXY = FOV/(FOV+trZ)
-    except ZeroDivisionError:
-        logging.error('Rotation makes object behind the camera: trZ == %.0f' % trZ)
-        scaleXY = 1
-    trX = (trX-width/2)*scaleXY+width/2
-    trY = (trY-height/2)*scaleXY+height/2
-    if scaleXY < 0:
-        scaleXY = -scaleXY
-        outX += 180
-        outY += 180
-        logging.error('Rotation makes object behind the camera: trZ == %.0f < %.0f' % (trZ, FOV))
-    return (trX, trY, WrapAngle(outX), WrapAngle(outY), WrapAngle(outZ), scaleXY*100, scaleXY*100)
+        ori = ''
+    url = 'http://www.bilibili.tv/list/%s-%d-%d-%d-%d-%d~%d-%d-%d%s.html'%(sortType,zone,page,begintime[0],begintime[1],begintime[2],endtime[0],endtime[1],endtime[2],ori)
+    content = getURLContent(url)
+    return GetVideoFromRate(content)
 
 
-def WriteCommentBilibiliPositioned(f, c, width, height, styleid):
-    #BiliPlayerSize = (512, 384)  # Bilibili player version 2010
-    #BiliPlayerSize = (540, 384)  # Bilibili player version 2012
-    BiliPlayerSize = (672, 438)  # Bilibili player version 2014
-    ZoomFactor = GetZoomFactor(BiliPlayerSize, (width, height))
+def GetUserInfo(url):
+    """
+由GetUserInfoBymid(mid)或者GetUserInfoByName(name)调用
+返回：
+    用户信息
+待添加：
+    如果用户不存在返回的是：{"code":-626,"message":"User is not exists."}
+    """
+    jsoninfo = JsonInfo(url)
+    user = User(jsoninfo.Getvalue('mid'), jsoninfo.Getvalue('name'))
+    user.isApprove = jsoninfo.Getvalue('approve')
+    #b站现在空间名暂时不返回
+    #user.spaceName = jsoninfo.Getvalue('spacename')
+    user.sex = jsoninfo.Getvalue('sex')
+    user.rank = jsoninfo.Getvalue('rank')
+    user.avatar = jsoninfo.Getvalue('face')
+    user.follow = jsoninfo.Getvalue('attention')
+    user.fans = jsoninfo.Getvalue('fans')
+    user.article = jsoninfo.Getvalue('article')
+    user.place = jsoninfo.Getvalue('place')
+    user.description = jsoninfo.Getvalue('description')
+    user.friend = jsoninfo.Getvalue('friend')
+    user.DisplayRank = jsoninfo.Getvalue('DisplayRank')
+    user.followlist = []
+    for fo in jsoninfo.Getvalue('attentions'):
+        user.followlist.append(fo)
+    return user
 
-    def GetPosition(InputPos, isHeight):
-        isHeight = int(isHeight)  # True -> 1
-        if isinstance(InputPos, int):
-            return ZoomFactor[0]*InputPos+ZoomFactor[isHeight+1]
-        elif isinstance(InputPos, float):
-            if InputPos > 1:
-                return ZoomFactor[0]*InputPos+ZoomFactor[isHeight+1]
-            else:
-                return BiliPlayerSize[isHeight]*ZoomFactor[0]*InputPos+ZoomFactor[isHeight+1]
-        else:
-            try:
-                InputPos = int(InputPos)
-            except ValueError:
-                InputPos = float(InputPos)
-            return GetPosition(InputPos, isHeight)
+def GetUserInfoBymid(mid):
+    """
+输入：
+    mid：查询的用户的id
+返回：
+    查看GetUserInfo()函数
+    """
+    mid = GetString(mid)
+    url = 'http://api.bilibili.cn/userinfo'+"?mid="+mid
+    return GetUserInfo(url)
 
-    try:
-        comment_args = safe_list(json.loads(c[3]))
-        text = ASSEscape(str(comment_args[4]).replace('/n', '\n'))
-        from_x = comment_args.get(0, 0)
-        from_y = comment_args.get(1, 0)
-        to_x = comment_args.get(7, from_x)
-        to_y = comment_args.get(8, from_y)
-        from_x = GetPosition(from_x, False)
-        from_y = GetPosition(from_y, True)
-        to_x = GetPosition(to_x, False)
-        to_y = GetPosition(to_y, True)
-        alpha = safe_list(str(comment_args.get(2, '1')).split('-'))
-        from_alpha = float(alpha.get(0, 1))
-        to_alpha = float(alpha.get(1, from_alpha))
-        from_alpha = 255-round(from_alpha*255)
-        to_alpha = 255-round(to_alpha*255)
-        rotate_z = int(comment_args.get(5, 0))
-        rotate_y = int(comment_args.get(6, 0))
-        lifetime = float(comment_args.get(3, 4500))
-        duration = int(comment_args.get(9, lifetime*1000))
-        delay = int(comment_args.get(10, 0))
-        fontface = comment_args.get(12)
-        isborder = comment_args.get(11, 'true')
-        from_rotarg = ConvertFlashRotation(rotate_y, rotate_z, from_x, from_y, width, height)
-        to_rotarg = ConvertFlashRotation(rotate_y, rotate_z, to_x, to_y, width, height)
-        styles = ['\\org(%d, %d)' % (width/2, height/2)]
-        if from_rotarg[0:2] == to_rotarg[0:2]:
-            styles.append('\\pos(%.0f, %.0f)' % (from_rotarg[0:2]))
-        else:
-            styles.append('\\move(%.0f, %.0f, %.0f, %.0f, %.0f, %.0f)' % (from_rotarg[0:2]+to_rotarg[0:2]+(delay, delay+duration)))
-        styles.append('\\frx%.0f\\fry%.0f\\frz%.0f\\fscx%.0f\\fscy%.0f' % (from_rotarg[2:7]))
-        if (from_x, from_y) != (to_x, to_y):
-            styles.append('\\t(%d, %d, ' % (delay, delay+duration))
-            styles.append('\\frx%.0f\\fry%.0f\\frz%.0f\\fscx%.0f\\fscy%.0f' % (to_rotarg[2:7]))
-            styles.append(')')
-        if fontface:
-            styles.append('\\fn%s' % ASSEscape(fontface))
-        styles.append('\\fs%.0f' % (c[6]*ZoomFactor[0]))
-        if c[5] != 0xffffff:
-            styles.append('\\c&H%s&' % ConvertColor(c[5]))
-            if c[5] == 0x000000:
-                styles.append('\\3c&HFFFFFF&')
-        if from_alpha == to_alpha:
-            styles.append('\\alpha&H%02X' % from_alpha)
-        elif (from_alpha, to_alpha) == (255, 0):
-            styles.append('\\fad(%.0f,0)' % (lifetime*1000))
-        elif (from_alpha, to_alpha) == (0, 255):
-            styles.append('\\fad(0, %.0f)' % (lifetime*1000))
-        else:
-            styles.append('\\fade(%(from_alpha)d, %(to_alpha)d, %(to_alpha)d, 0, %(end_time).0f, %(end_time).0f, %(end_time).0f)' % {'from_alpha': from_alpha, 'to_alpha': to_alpha, 'end_time': lifetime*1000})
-        if isborder == 'false':
-            styles.append('\\bord0')
-        f.write('Dialogue: -1,%(start)s,%(end)s,%(styleid)s,,0,0,0,,{%(styles)s}%(text)s\n' % {'start': ConvertTimestamp(c[0]), 'end': ConvertTimestamp(c[0]+lifetime), 'styles': ''.join(styles), 'text': text, 'styleid': styleid})
-    except (IndexError, ValueError) as e:
-        try:
-            logging.warning(_('Invalid comment: %r') % c[3])
-        except IndexError:
-            logging.warning(_('Invalid comment: %r') % c)
+def GetUserInfoByName(name):
+    """
+输入：
+    mid：查询的用户的昵称
+返回：
+    查看GetUserInfo()函数
+    """
+    name = GetString(name)
+    url = 'http://api.bilibili.cn/userinfo'+"?user="+name
+    return GetUserInfo(url)
 
-# Result: (f, dx, dy)
-# To convert: NewX = f*x+dx, NewY = f*y+dy
-def GetZoomFactor(SourceSize, TargetSize):
-    try:
-        if (SourceSize, TargetSize) == GetZoomFactor.Cached_Size:
-            return GetZoomFactor.Cached_Result
-    except AttributeError:
-        pass
-    GetZoomFactor.Cached_Size = (SourceSize, TargetSize)
-    try:
-        SourceAspect = SourceSize[0]/SourceSize[1]
-        TargetAspect = TargetSize[0]/TargetSize[1]
-        if TargetAspect < SourceAspect:  # narrower
-            ScaleFactor = TargetSize[0]/SourceSize[0]
-            GetZoomFactor.Cached_Result = (ScaleFactor, 0, (TargetSize[1]-TargetSize[0]/SourceAspect)/2)
-        elif TargetAspect > SourceAspect:  # wider
-            ScaleFactor = TargetSize[1]/SourceSize[1]
-            GetZoomFactor.Cached_Result = (ScaleFactor, (TargetSize[0]-TargetSize[1]*SourceAspect)/2, 0)
-        else:
-            GetZoomFactor.Cached_Result = (TargetSize[0]/SourceSize[0], 0, 0)
-        return GetZoomFactor.Cached_Result
-    except ZeroDivisionError:
-        GetZoomFactor.Cached_Result = (1, 0, 0)
-        return GetZoomFactor.Cached_Result
+def GetVideoOfZhuanti(spid, season_id=None, bangumi=None):
+    """
+输入：
+    spid:专题id
+    season_id：分季ID
+    bangumi：设置为1返回剧番，不设置或者设置为0返回相关视频
+返回：
+    视频列表，包含av号，标题，封面和观看数
+    """
+    url = ' http://api.bilibili.cn/spview?spid='+GetString(spid)
+    if season_id:
+        url += '&season_id='+GetString(season_id)
+    if bangumi:
+        url += '&bangumi='+GetString(bangumi)
+    jsoninfo = JsonInfo(url)
+    videolist = []
+    for video_idx in jsoninfo.Getvalue('list'):
+        video = Video(video_idx['aid'],video_idx['title'])
+        video.cover = video_idx['cover']
+        video.guankan = video_idx['click']
+        if video_idx.has_key('episode'):
+            video.episode = video_idx['episode']
+        video.src = video_idx["from"]
+        video.cid = video_idx["cid"]
+        video.page = video_idx["page"]
+        videolist.append(video)
+    return videolist
 
+def GetComment(aid, page = None, pagesize = None, order = None):
+    """
+输入：
+    aid：AV号
+    page：页码
+    pagesize：单页返回的记录条数，最大不超过300，默认为10。
+    order：排序方式 默认按发布时间倒序 可选：good 按点赞人数排序 hot 按热门回复排序
+返回：
+    评论列表
+    """
+    url = 'http://api.bilibili.cn/feedback?aid='+GetString(aid)
+    if page:
+        url += '&page='+GetString(page)
+    if pagesize:
+        url += '&pagesize='+GetString(pagesize)
+    if order:
+        url += '&order='+GetString(order)
+    jsoninfo = JsonInfo(url)
+    commentList = CommentList()
+    commentList.comments = []
+    commentList.commentLen = jsoninfo.Getvalue('totalResult')
+    commentList.page = jsoninfo.Getvalue('pages')
+    idx = 0
+    while jsoninfo.Getvalue(str(idx)):
+        liuyan = Comment()
+        liuyan.lv = jsoninfo.Getvalue(str(idx),'lv')
+        liuyan.fbid = jsoninfo.Getvalue(str(idx),'fbid')
+        liuyan.msg = jsoninfo.Getvalue(str(idx),'msg')
+        liuyan.ad_check = jsoninfo.Getvalue(str(idx),'ad_check')
+        liuyan.post_user.mid = jsoninfo.Getvalue(str(idx),'mid')
+        liuyan.post_user.avatar = jsoninfo.Getvalue(str(idx),'face')
+        liuyan.post_user.rank = jsoninfo.Getvalue(str(idx),'rank')
+        liuyan.post_user.name = jsoninfo.Getvalue(str(idx),'nick')
+        commentList.comments.append(liuyan)
+        idx += 1
+    return commentList
 
-def WriteASSHead(f, width, height, fontface, fontsize, alpha, styleid):
-    f.write(
-'''
-[Script Info]
-; Script generated by Danmaku2ASS
-; https://github.com/m13253/danmaku2ass
-Script Updated By: Danmaku2ASS (https://github.com/m13253/danmaku2ass)
-ScriptType: v4.00+
-PlayResX: %(width)d
-PlayResY: %(height)d
-Aspect Ratio: %(width)d:%(height)d
-Collisions: Normal
-WrapStyle: 2
-ScaledBorderAndShadow: yes
-YCbCr Matrix: TV.601
+def GetAllComment(aid, order = None):
+    """
+获取一个视频全部评论，有可能需要多次爬取，所以会有较大耗时
+输入：
+    aid：AV号
+    order：排序方式 默认按发布时间倒序 可选：good 按点赞人数排序 hot 按热门回复排序
+返回：
+    评论列表
+    """
+    MaxPageSize = 300
+    commentList = GetComment(aid=aid, pagesize=MaxPageSize, order=order)
+    if commentList.page == 1:
+        return commentList
+    for p in range(2,commentList.page+1):
+        t_commentlist = GetComment(aid=aid,pagesize=MaxPageSize,page=p,ver=ver,order=order)
+        for liuyan in t_commentlist.comments:
+            commentList.comments.append(liuyan)
+        time.sleep(0.5)
+    return commentList
 
-[V4+ Styles]
-Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: %(styleid)s, %(fontface)s, %(fontsize).0f, &H%(alpha)02XFFFFFF, &H%(alpha)02XFFFFFF, &H%(alpha)02X000000, &H%(alpha)02X000000, 0, 0, 0, 0, 100, 100, 0.00, 0.00, 1, %(outline).0f, 0, 7, 0, 0, 0, 0
-
-[Events]
-Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
-''' % {'width': width, 'height': height, 'fontface': fontface, 'fontsize': fontsize, 'alpha': 255-round(alpha*255), 'outline': max(fontsize/25.0, 1), 'styleid': styleid}
-    )
-
-def TestFreeRows(rows, c, row, width, height, bottomReserved, lifetime):
-    res = 0
-    rowmax = height-bottomReserved
-    targetRow = None
-    if c[4] in (1, 2):
-        while row < rowmax and res < c[7]:
-            if targetRow != rows[c[4]][row]:
-                targetRow = rows[c[4]][row]
-                if targetRow and targetRow[0]+lifetime > c[0]:
-                    break
-            row += 1
-            res += 1
-    else:
-        try:
-            thresholdTime = c[0]-lifetime*(1-width/(c[8]+width))
-        except ZeroDivisionError:
-            thresholdTime = c[0]-lifetime
-        while row < rowmax and res < c[7]:
-            if targetRow != rows[c[4]][row]:
-                targetRow = rows[c[4]][row]
-                try:
-                    if targetRow and (targetRow[0] > thresholdTime or targetRow[0]+targetRow[8]*lifetime/(targetRow[8]+width) > c[0]):
-                        break
-                except ZeroDivisionError:
-                    pass
-            row += 1
-            res += 1
-    return res
-
-def MarkCommentRow(rows, c, row):
-    row = int(row)
-    try:
-        for i in range(row, int(row+math.ceil(c[7]))):
-            rows[c[4]][i] = c
-    except IndexError:
-        pass
-
-def ASSEscape(s):
-    def ReplaceLeadingSpace(s):
-        sstrip = s.strip(' ')
-        slen = len(s)
-        if slen == len(sstrip):
-            return s
-        else:
-            llen = slen-len(s.lstrip(' '))
-            rlen = slen-len(s.rstrip(' '))
-            return ''.join(('\u2007'*llen, sstrip, '\u2007'*rlen))
-    return '\\N'.join((ReplaceLeadingSpace(i) or ' ' for i in str(s).replace('\\', '\\\\').replace('{', '\\{').replace('}', '\\}').split('\n')))
-
-def ConvertTimestamp(timestamp):
-    timestamp = round(timestamp*100.0)
-    hour, minute = divmod(timestamp, 360000)
-    minute, second = divmod(minute, 6000)
-    second, centsecond = divmod(second, 100)
-    return '%d:%02d:%02d.%02d' % (int(hour), int(minute), int(second), int(centsecond))
-
-def ConvertType2(row, height, bottomReserved):
-    return height-bottomReserved-row
-
-def FindAlternativeRow(rows, c, height, bottomReserved):
-    res = 0
-    for row in range(int(height-bottomReserved-math.ceil(c[7]))):
-        if not rows[c[4]][row]:
-            return row
-        elif rows[c[4]][row][0] < rows[c[4]][res][0]:
-            res = row
-    return res
-    
-def ConvertColor(RGB, width=1280, height=576):
-    if RGB == 0x000000:
-        return '000000'
-    elif RGB == 0xffffff:
-        return 'FFFFFF'
-    R = (RGB >> 16) & 0xff
-    G = (RGB >> 8) & 0xff
-    B = RGB & 0xff
-    if width < 1280 and height < 576:
-        return '%02X%02X%02X' % (B, G, R)
-    else:  # VobSub always uses BT.601 colorspace, convert to BT.709
-        ClipByte = lambda x: 255 if x > 255 else 0 if x < 0 else round(x)
-        return '%02X%02X%02X' % (
-            ClipByte(R*0.00956384088080656+G*0.03217254540203729+B*0.95826361371715607),
-            ClipByte(R*-0.10493933142075390+G*1.17231478191855154+B*-0.06737545049779757),
-            ClipByte(R*0.91348912373987645+G*0.07858536372532510+B*0.00792551253479842)
-        )
-        
-def WriteComment(f, c, row, width, height, bottomReserved, fontsize, lifetime, styleid):
-    text = ASSEscape(c[3])
-    styles = []
-    if c[4] == 1:
-        styles.append('\\an8\\pos(%(halfwidth)d, %(row)d)' % {'halfwidth': width/2, 'row': row})
-    elif c[4] == 2:
-        styles.append('\\an2\\pos(%(halfwidth)d, %(row)d)' % {'halfwidth': width/2, 'row': ConvertType2(row, height, bottomReserved)})
-    elif c[4] == 3:
-        styles.append('\\move(%(neglen)d, %(row)d, %(width)d, %(row)d)' % {'width': width, 'row': row, 'neglen': -math.ceil(c[8])})
-    else:
-        styles.append('\\move(%(width)d, %(row)d, %(neglen)d, %(row)d)' % {'width': width, 'row': row, 'neglen': -math.ceil(c[8])})
-    if not (-1 < c[6]-fontsize < 1):
-        styles.append('\\fs%.0f' % c[6])
-    if c[5] != 0xffffff:
-        styles.append('\\c&H%s&' % ConvertColor(c[5]))
-        if c[5] == 0x000000:
-            styles.append('\\3c&HFFFFFF&')
-    f.write('Dialogue: 2,%(start)s,%(end)s,%(styleid)s,,0000,0000,0000,,{%(styles)s}%(text)s\n' % {'start': ConvertTimestamp(c[0]), 'end': ConvertTimestamp(c[0]+lifetime), 'styles': ''.join(styles), 'text': text, 'styleid': styleid})
-
-
-def CalculateLength(s):
-    return max(map(len, s.split('\n')))  # May not be accurate
-
-def GetVedioInfo(aid,appkey,page = 1,AppSecret=None,fav = None):
-    paras = {'id': GetString(aid),'page': GetString(page)};
-    if fav != None:
-        paras['fav'] = fav;
-    url =  'http://api.bilibili.cn/view?'+GetSign(paras,appkey,AppSecret);
-    jsoninfo = JsonInfo(url);
-    vedio = Vedio(aid,jsoninfo.Getvalue('title'));
-    vedio.guankan = jsoninfo.Getvalue('play')
-    vedio.commentNumber = jsoninfo.Getvalue('review')
-    vedio.danmu = jsoninfo.Getvalue('video_review')
-    vedio.shoucang = jsoninfo.Getvalue('favorites');
-    vedio.description = jsoninfo.Getvalue('description')
-    vedio.tag = [];
-    taglist = jsoninfo.Getvalue('tag');
-    if taglist != None:
+def GetVideoInfo(aid, appkey,page = 1, AppSecret=None, fav = None):
+    """
+获取视频信息
+输入：
+    aid：AV号
+    page：页码
+    fav：是否读取会员收藏状态 (默认 0)
+    """
+    paras = {'id': GetString(aid),'page': GetString(page)}
+    if fav:
+        paras['fav'] = fav
+    url =  'http://api.bilibili.cn/view?'+GetSign(paras,appkey,AppSecret)
+    jsoninfo = JsonInfo(url)
+    video = Video(aid,jsoninfo.Getvalue('title'))
+    video.guankan = jsoninfo.Getvalue('play')
+    video.commentNumber = jsoninfo.Getvalue('review')
+    video.danmu = jsoninfo.Getvalue('video_review')
+    video.shoucang = jsoninfo.Getvalue('favorites')
+    video.description = jsoninfo.Getvalue('description')
+    video.tag = []
+    taglist = jsoninfo.Getvalue('tag')
+    if taglist:
         for tag in taglist.split(','):
-            vedio.tag.append(tag);
-    vedio.cover = jsoninfo.Getvalue('pic');
-    vedio.author = User(jsoninfo.Getvalue('mid'),jsoninfo.Getvalue('author'));
-    vedio.page = jsoninfo.Getvalue('pages');
-    vedio.date = jsoninfo.Getvalue('created_at');
-    vedio.credit = jsoninfo.Getvalue('credit');
-    vedio.coin = jsoninfo.Getvalue('coins');
-    vedio.spid = jsoninfo.Getvalue('spid');
-    vedio.cid = jsoninfo.Getvalue('cid');
-    vedio.offsite = jsoninfo.Getvalue('offsite');
-    vedio.partname = jsoninfo.Getvalue('partname');
-    vedio.src = jsoninfo.Getvalue('src');
-    vedio.tid = jsoninfo.Getvalue('tid')
-    vedio.typename = jsoninfo.Getvalue('typename')
-    vedio.instant_server = jsoninfo.Getvalue('instant_server');
-    return vedio
-    
-def GetSign(params,appkey,AppSecret=None):
+            video.tag.append(tag)
+    video.cover = jsoninfo.Getvalue('pic')
+    video.author = User(jsoninfo.Getvalue('mid'),jsoninfo.Getvalue('author'))
+    video.page = jsoninfo.Getvalue('pages')
+    video.date = jsoninfo.Getvalue('created_at')
+    video.credit = jsoninfo.Getvalue('credit')
+    video.coin = jsoninfo.Getvalue('coins')
+    video.spid = jsoninfo.Getvalue('spid')
+    video.cid = jsoninfo.Getvalue('cid')
+    video.offsite = jsoninfo.Getvalue('offsite')
+    video.partname = jsoninfo.Getvalue('partname')
+    video.src = jsoninfo.Getvalue('src')
+    video.tid = jsoninfo.Getvalue('tid')
+    video.typename = jsoninfo.Getvalue('typename')
+    video.instant_server = jsoninfo.Getvalue('instant_server')
+    ## 以下三个意义不明。。
+    # video.allow_bp = jsoninfo.Getvalue('allow_bp')
+    # video.allow_feed = jsoninfo.Getvalue('allow_feed')
+    # video.created = jsoninfo.Getvalue('created')
+    return video
+
+
+def GetBangumi(appkey, btype = None, weekday = None, AppSecret=None):
     """
-    获取新版API的签名，不然会返回-3错误
-待添加：【重要！】
-    需要做URL编码并保证字母都是大写，如 %2F
+获取新番信息
+输入：
+    btype：番剧类型 2: 二次元新番 3: 三次元新番 默认(0)：所有
+    weekday:周一:1 周二:2 ...周六:6
     """
-    params['appkey']=appkey;
-    data = "";
-    paras = params.keys();
-    paras.sort();
-    for para in paras:
-        if data != "":
-            data += "&";
-        data += para + "=" + params[para];
-    if AppSecret == None:
-        return data
-    m = hashlib.md5()
-    m.update(data+AppSecret)
-    return data+'&sign='+m.hexdigest()
+    paras = {}
+    if btype != None and btype in [2,3]:
+        paras['btype'] = GetString(btype)
+    if weekday != None:
+        paras['weekday'] = GetString(weekday)
+    url =  'http://api.bilibili.cn/bangumi?' + GetSign(paras, appkey, AppSecret)
+    jsoninfo = JsonInfo(url)
+    bangumilist = []
+    if jsoninfo.Getvalue('code') != 0:
+        print jsoninfo.Getvalue('error')
+        return bangumilist
+    for bgm in jsoninfo.Getvalue('list'):
+        bangumi = Bangumi()
+        bgm = DictDecode2UTF8(bgm)
+        bangumi.typeid = bgm['typeid']
+        bangumi.lastupdate = bgm['lastupdate']
+        bangumi.areaid = bgm['areaid']
+        bangumi.bgmcount = getint(bgm['bgmcount'])
+        bangumi.title = bgm['title']
+        bangumi.lastupdate_at = bgm['lastupdate_at']
+        bangumi.attention = bgm['attention']
+        bangumi.cover = bgm['cover']
+        bangumi.priority = bgm['priority']
+        bangumi.area = bgm['area']
+        bangumi.weekday = bgm['weekday']
+        bangumi.spid = bgm['spid']
+        bangumi.new = bgm['new']
+        bangumi.scover = bgm['scover']
+        bangumi.mcover = bgm['mcover']
+        bangumi.click = bgm['click']
+        bangumi.season_id = bgm['season_id']
+        bangumi.click = bgm['click']
+        bangumi.video_view = bgm['video_view']
+        bangumilist.append(bangumi)
+    return bangumilist
 
+def biliVideoSearch(appkey, AppSecret, keyword, order = 'default', pagesize = 20, page = 1):
+    """
+【注】：
+    旧版Appkey不可用，必须配合AppSecret使用！！
 
-
-        
-def GetDanmuku(cid):
-    cid = getint(cid);
-    url = "http://comment.bilibili.cn/%d.xml"%(cid);
-    content = zlib.decompressobj(-zlib.MAX_WBITS).decompress(getURLContent(url))
-#    content = GetRE(content,r'<d p=[^>]*>([^<]*)<')
-    return content;
-
-
-#def FilterBadChars(f):
-#    s = f.read()
-#    s = re.sub('[\\x00-\\x08\\x0b\\x0c\\x0e-\\x1f]', '\ufffd', s)
-#    return io.StringIO(s)
-    
-def ReadCommentsBilibili(f, fontsize):
-    dom = xml.dom.minidom.parseString(f)
-    comment_element = dom.getElementsByTagName('d')
-    for i, comment in enumerate(comment_element):
-        try:
-            p = str(comment.getAttribute('p')).split(',')
-            assert len(p) >= 5
-            assert p[1] in ('1', '4', '5', '6', '7')
-            if p[1] != '7':
-                c = str(comment.childNodes[0].wholeText).replace('/n', '\n')
-                size = int(p[2])*fontsize/25.0
-                yield (float(p[0]), int(p[4]), i, c, {'1': 0, '4': 2, '5': 1, '6': 3}[p[1]], int(p[3]), size, (c.count('\n')+1)*size, CalculateLength(c)*size)
-            else:  # positioned comment
-                c = str(comment.childNodes[0].wholeText)
-                yield (float(p[0]), int(p[4]), i, c, 'bilipos', int(p[3]), int(p[2]), 0, 0)
-        except (AssertionError, AttributeError, IndexError, TypeError, ValueError):
+根据关键词搜索视频
+输入：
+    order：排序方式  默认default，其余待测试
+    keyword：关键词
+    pagesize:返回条目多少
+    page：页码
+    """
+    paras = {}
+    paras['keyword'] = GetString(keyword)
+    paras['order'] = GetString(order)
+    paras['pagesize'] = GetString(pagesize)
+    paras['page'] = GetString(page)
+    url =  'http://api.bilibili.cn/search?' + GetSign(paras, appkey, AppSecret)
+    jsoninfo = JsonInfo(url)
+    videolist = []
+    for video_idx in jsoninfo.Getvalue('result'):
+        if video_idx['type'] != 'video':
             continue
+        video = Video(video_idx['aid'], video_idx['title'])
+        video.typename = video_idx['typename']
+        video.author = User(video_idx['mid'], video_idx['author'])
+        video.acurl = video_idx['arcurl']
+        video.description = video_idx['description']
+        video.arcrank = video_idx['arcrank']
+        video.cover = video_idx['pic']
+        video.guankan = video_idx['play']
+        video.danmu = video_idx['video_review']
+        video.shoucang = video_idx['favorites']
+        video.commentNumber = video_idx['review']
+        video.date = video_idx['pubdate']
+        video.tag = video_idx['tag'].split(',')
+        videolist.append(video)
+    return videolist
 
-def ConvertToFile(filename_or_file, *args, **kwargs):
-    return open(filename_or_file, *args, **kwargs)
+def biliZhuantiSearch(appkey, AppSecret, keyword):
+    """
+根据关键词搜索专题
+输入：
+    keyword：关键词
+    """
+    paras = {}
+    paras['keyword'] = GetString(keyword)
+    url = 'http://api.bilibili.cn/search?' + GetSign(paras, appkey, AppSecret)
+    jsoninfo = JsonInfo(url)
+    zhuantiList = []
+    for zhuanti_idx in jsoninfo.Getvalue('result'):
+        if zhuanti_idx['type'] != 'special':
+            continue
+        zhuanti = ZhuantiInfo(zhuanti_idx['spid'], zhuanti_idx['title'])
+        zhuanti.author = User(zhuanti_idx['mid'], zhuanti_idx['author'])
+        zhuanti.cover = zhuanti_idx['pic']
+        zhuanti.thumb = zhuanti_idx['thumb']
+        zhuanti.ischeck = zhuanti_idx['ischeck']
+        zhuanti.tag = zhuanti_idx['tag'].split(',')
+        zhuanti.description = zhuanti_idx['description']
+        zhuanti.pubdate = zhuanti_idx['pubdate']
+        zhuanti.postdate = zhuanti_idx['postdate']
+        zhuanti.lastupdate = zhuanti_idx['lastupdate']
+        zhuanti.click = zhuanti_idx['click']
+        zhuanti.favourite = zhuanti_idx['favourite']
+        zhuanti.attention = zhuanti_idx['attention']
+        zhuanti.count = zhuanti_idx['count']
+        zhuanti.bgmcount = zhuanti_idx['bgmcount']
+        zhuanti.spcount = zhuanti_idx['spcount']
+        zhuanti.season_id = zhuanti_idx['season_id']
+        zhuanti.is_bangumi = zhuanti_idx['is_bangumi']
+        zhuanti.arcurl = zhuanti_idx['arcurl']
+        zhuantiList.append(zhuanti)
+    return zhuantiList
 
+#def GetBangumiByTime(year, month):
+#    url='http://www.bilibili.tv/index/bangumi/%s-%s.json'%(GetString(year),GetString(month))
+#    print url
+#    jsoninfo = getURLContent(url)
+#    print jsoninfo
 
-def ProcessComments(comments, f, width, height, bottomReserved, fontface, fontsize, alpha, lifetime, reduced, progress_callback):
-    styleid = 'Danmaku2ASS_%04x' % random.randint(0, 0xffff)
-    WriteASSHead(f, width, height, fontface, fontsize, alpha, styleid)
-    rows = [[None]*(height-bottomReserved+1) for i in range(4)]
-    for idx, i in enumerate(comments):
-        if progress_callback and idx % 1000 == 0:
-            progress_callback(idx, len(comments))
-        if isinstance(i[4], int):
-            row = 0
-            rowmax = height-bottomReserved-i[7]
-            while row <= rowmax:
-                freerows = TestFreeRows(rows, i, row, width, height, bottomReserved, lifetime)
-                if freerows >= i[7]:
-                    MarkCommentRow(rows, i, row)
-                    WriteComment(f, i, row, width, height, bottomReserved, fontsize, lifetime, styleid)
-                    break
-                else:
-                    row += freerows or 1
-            else:
-                if not reduced:
-                    row = FindAlternativeRow(rows, i, height, bottomReserved)
-                    MarkCommentRow(rows, i, row)
-                    WriteComment(f, i, row, width, height, bottomReserved, fontsize, lifetime, styleid)
-        elif i[4] == 'bilipos':
-            WriteCommentBilibiliPositioned(f, i, width, height, styleid)
-        elif i[4] == 'acfunpos':
-            WriteCommentAcfunPositioned(f, i, width, height, styleid)
-        elif i[4] == 'sH5Vpos':
-            WriteCommentSH5VPositioned(f, i, width, height, styleid)
-        else:
-            logging.warning(_('Invalid comment: %r') % i[3])
-    if progress_callback:
-        progress_callback(len(comments), len(comments))
-        
-def Danmaku2ASS(input_files, output_file, stage_width, stage_height, reserve_blank=0, font_face='sans-serif', font_size=25.0, text_opacity=1.0, comment_duration=5.0, is_reduce_comments=False, progress_callback=None):
-    fo = None
-    comments = ReadComments(input_files, font_size)
-    try:        
-        fo = ConvertToFile(output_file, 'w')
-        ProcessComments(comments, fo, stage_width, stage_height, reserve_blank, font_face, font_size, text_opacity, comment_duration, is_reduce_comments, progress_callback)
-    finally:
-        if output_file and fo != output_file:
-            fo.close()
+def GetRank(appkey, tid, begin=None, end=None, page = None, pagesize=None, click_detail =None, order = None, AppSecret=None):
+    """
+获取排行信息
+输入：
+    详见https://github.com/Vespa314/bilibili-api/blob/master/api.md
+输出：
+    详见https://github.com/Vespa314/bilibili-api/blob/master/api.md
+    """
+    paras = {}
+    paras['appkey']=appkey
+    paras['tid']=GetString(tid)
+    if order:
+        paras['order']=order
+    if click_detail:
+        paras['click_detail']=click_detail
+    if pagesize:
+        paras['pagesize']=GetString(pagesize)
+    if begin != None and len(begin)==3:
+        paras['begin']='%d-%d-%d'%(begin[0],begin[1],begin[2])
+    if end != None and len(end)==3:
+        paras['end']='%d-%d-%d'%(end[0],end[1],end[2])
+    if page:
+        paras['page']=GetString(page)
+    if click_detail:
+        paras['click_detail'] = click_detail
+    url = 'http://api.bilibili.cn/list?' + GetSign(paras,appkey,AppSecret)
+    jsoninfo = JsonInfo(url)
+    videolist = []
+    if jsoninfo.Getvalue('code') != 0:
+        print jsoninfo.Getvalue('error')
+        return videolist
+    page = jsoninfo.Getvalue('pages')
+    name = jsoninfo.Getvalue('name')
+    for i in range(len(jsoninfo.Getvalue('list'))-1):
+        idx = str(i)
+        video = Video(jsoninfo.Getvalue('list',idx,'aid'),jsoninfo.Getvalue('list',idx,'title'))
+        video.Iscopy = jsoninfo.Getvalue('list',idx,'copyright')
+        video.tid = jsoninfo.Getvalue('list',idx,'typeid')
+        video.typename = jsoninfo.Getvalue('list',idx,'typename')
+        video.subtitle = jsoninfo.Getvalue('list',idx,'subtitle')
+        video.guankan = jsoninfo.Getvalue('list',idx,'play')
+        # video.commentNumber = jsoninfo.Getvalue('list',idx,'review')
+        video.danmu = jsoninfo.Getvalue('list',idx,'video_review')
+        video.shoucang = jsoninfo.Getvalue('list',idx,'favorites')
+        video.author = User(jsoninfo.Getvalue('list',idx,'mid'),jsoninfo.Getvalue('list',idx,'author'))
+        video.description = jsoninfo.Getvalue('list',idx,'description')
+        video.date = jsoninfo.Getvalue('list',idx,'create')
+        video.cover = jsoninfo.Getvalue('list',idx,'pic')
+        video.credit = jsoninfo.Getvalue('list',idx,'credit')
+        video.coin = jsoninfo.Getvalue('list',idx,'coins')
+        video.commentNumber = jsoninfo.Getvalue('list',idx,'comment')
+        video.duration = jsoninfo.Getvalue('list',idx,'duration')
+        if click_detail != None:
+            video.play_site = jsoninfo.Getvalue('list',idx,'play_site')
+            video.play_forward = jsoninfo.Getvalue('list',idx,'play_forward')
+            video.play_mobile = jsoninfo.Getvalue('list',idx,'play_mobile')
+        videolist.append(video)
+    return [page,name,videolist]
 
-def ReadComments(input_files, font_size=25.0):    
-    comments = []
-    comments.extend(ReadCommentsBilibili(input_files, font_size))
-    comments.sort()
-    return comments
+def GetDanmuku(cid):
+    cid = getint(cid)
+    url = "http://comment.bilibili.cn/%d.xml"%(cid)
+    content = zlib.decompressobj(-zlib.MAX_WBITS).decompress(getURLContent(url))
+    content = GetRE(content,r'<d p=[^>]*>([^<]*)<')
+    return content
 
-av = '{query}'
-appkey = "03fc8eb101b091fb"
-vedio = GetVedioInfo(1447736,appkey,AppSecret=None)
-Danmaku2ASS(GetDanmuku(vedio.cid),r'%s/Desktop/%s.ass'%(os.path.expanduser('~'),vedio.title), 640, 360, 0, 'sans-serif', 15, 0.5, 10, False)
+def GetBilibiliUrl(url, appkey, AppSecret=None):
+    overseas=False
+    url_get_media = 'http://interface.bilibili.com/playurl?' if not overseas else 'http://interface.bilibili.com/v_cdn_play?'
+    regex_match = re.findall('http:/*[^/]+/video/av(\\d+)(/|/index.html|/index_(\\d+).html)?(\\?|#|$)',url)
+    if not regex_match:
+        return []
+    aid = regex_match[0][0]
+    pid = regex_match[0][2] or '1'
+    video = GetVideoInfo(aid,appkey,pid,AppSecret)
+    cid = video.cid
+    media_args = {'cid': cid,'quality':4}
+    resp_media = getURLContent(url_get_media+GetSign(media_args,appkey,AppSecret))
+    media_urls = [str(k.wholeText).strip() for i in xml.dom.minidom.parseString(resp_media.decode('utf-8', 'replace')).getElementsByTagName('durl') for j in i.getElementsByTagName('url')[:1] for k in j.childNodes if k.nodeType == 4]
+    return media_urls
+
+if __name__ == "__main__":
+    #获取最热视频
+    # videoList = GetPopularVideo([2014,05,20],[2014,05,27],TYPE_BOFANG,0,1)
+    # for video in videoList:
+    #     print video.title
+     #获取用户信息
+    # user = GetUserInfoBymid('72960')
+    # print user.name,user.DisplayRank
+    # user = GetUserInfoByName('vespa')
+    # print user.friend
+    #获取专题视频信息
+    # videolist = GetVideoOfZhuanti('46465',bangumi=1)
+    # for video in videolist:
+    #     print video.title
+    #获取评论
+    # commentList = GetAllComment('1154794')
+    # for liuyan in commentList.comments:
+    #     print liuyan.lv,'-',liuyan.post_user.name,':',liuyan.msg
+    #获取视频信息
+    # appkey = '************'
+    # secretkey = None #选填
+    # video = GetVideoInfo(1152959,appkey=appkey,AppSecret=secretkey)
+    # for tag in video.tag:
+    #     print tag
+    #获取新番
+    # bangumilist = GetBangumi(appkey,btype = 2,weekday=1,AppSecret=secretkey)
+    # for bangumi in bangumilist:
+    #     print bangumi.title
+    #获取分类排行
+    # [page,name,videolist] = GetRank(appkey,tid='0',order='hot',page=1,pagesize = 100,begin=[2014,1,1],end=[2014,2,1],click_detail='true')
+    # for video in videolist:
+    #     print video.title,video.play_site
+    #获取弹幕
+    # video = GetVideoInfo(1677082,appkey,AppSecret=secretkey)
+    # for danmu in GetDanmuku(video.cid):
+    #     print danmu
+    #获取视频下载地址列表
+    # media_urls = GetBilibiliUrl('http://www.bilibili.com/video/av1691618/',appkey = appkey)
+    # for url in media_urls:
+    #     print(url)
+    #视频搜索
+    # for video in biliVideoSearch(appkey,secretkey,'rwby'):
+    #     print video.title
+    #专题搜索
+    # for zhuanti in biliZhuantiSearch(appkey,secretkey,'rwby'):
+    #     print zhuanti.title
