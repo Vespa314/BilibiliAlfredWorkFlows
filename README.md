@@ -96,6 +96,18 @@ danmu加上视频URL地址即可，比如：
 
 > 有些时候一些新番的的弹幕需要登录才可以获取，这里没有实现。。。也不会去实现。。
 
+## 获取视频下载url
+关键字:`url`
+
+食用方法：
+url加上视频URL地址即可，比如：
+* url http://www.bilibili.com/video/av1687261/
+
+选中后会自动将将url复制到剪贴板，可以直接打开迅雷粘贴即可！！
+
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/url1.png)
+
+> 注：如果出现多个下载url，最好不要使用这个方法，而采用you-get之类的会自动合并多个短视频的脚本。
 
 ## 配合使用的系统设置
 首先完成以下三项配置：
