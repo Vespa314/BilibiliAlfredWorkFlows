@@ -2,52 +2,65 @@
 """
 Created on Mon May 26 23:59:09 2014
 
-@author: Administrator
+@author: Vespa
 """
 import urllib2
+import urllib
 import re
 import json
 import zlib
-from biclass import * 
+import gzip
+import xml.dom.minidom
+import hashlib
+from biclass import *
 import time
+import sys
+import os
+
 def GetRE(content,regexp):
     return re.findall(regexp, content)
 
 def getURLContent(url):
-    while True:    	
-        flag = 1;
+    while True:
+        flag = 1
         try:
-            headers = {'User-Agent':'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US; rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'}
-            req = urllib2.Request(url = url,headers = headers);   
-            content = urllib2.urlopen(req).read();
+            headers = {'User-Agent':'Mozilla/5.0 (Windows U Windows NT 6.1 en-US rv:1.9.1.6) Gecko/20091201 Firefox/3.5.6'}
+            req = urllib2.Request(url = url,headers = headers)
+            content = urllib2.urlopen(req).read()
         except:
-        	flag = 0;
+        	flag = 0
         	time.sleep(5)
         if flag == 1:
-        	break;
-    return content;
-    
-#def FromJson(url):
-#    return json.loads(getURLContent(url))
+        	break
+    return content
 
 class JsonInfo():
     def __init__(self,url):
-        self.info = json.loads(getURLContent(url));
+        self.info = json.loads(getURLContent(url))
+        if self.info.has_key('code') and self.info['code'] != 0:
+            if self.info.has_key('message'):
+                print "【Error】code=%d, msg=%s, url=%s"%(self.info['code'],self.Getvalue('message'),url)
+            elif self.info.has_key('error'):
+                print "【Error】code=%d, msg=%s, url=%s"%(self.info['code'],self.Getvalue('error'),url)
+            error = True
     def Getvalue(self,*keys):
         if len(keys) == 0:
             return None
         if self.info.has_key(keys[0]):
-            temp = self.info[keys[0]];
+            temp = self.info[keys[0]]
         else:
-            return None;
+            return None
         if len(keys) > 1:
             for key in keys[1:]:
                 if temp.has_key(key):
                     temp = temp[key]
                 else:
-                    return None;
+                    return None
+        if isinstance(temp,unicode):
+            temp = temp.encode('utf8')
         return temp
-    info = None;
+    info = None
+    error = False
 
 def GetString(t):
     if type(t) == int:
@@ -61,41 +74,81 @@ def getint(string):
         i = 0
     return i
 
-#从视频源码获取视频信息
-def GetVedioFromRate(content):
+def DictDecode2UTF8(dict):
+    for keys in dict:
+        if isinstance(dict[keys],unicode):
+            dict[keys] = dict[keys].encode('utf8')
+    return dict
+
+def GetVideoFromRate(content):
+    """
+从视频搜索源码页面提取视频信息
+    """
     #av号和标题
-    regular1 = r'<a href="/video/av(\d+)/" target="_blank" class="title">([^/]+)</a>';
+    regular1 = r'<a href="/video/av(\d+)/" target="_blank" class="title" [^>]*>([^/]+)</a>'
     info1 = GetRE(content,regular1)
     #观看数
-    regular2 = r'<i class="gk" title=".*">(.+)</i>';
+    regular2 = r'<i class="gk" title=".*" [^>]*>(.+)</i>'
     info2 = GetRE(content,regular2)
     #收藏
-    regular3 = r'<i class="sc" title=".*">(.+)</i>';
+    regular3 = r'<i class="sc" title=".*" [^>]*>(.+)</i>'
     info3 = GetRE(content,regular3)
     #弹幕
-    regular4 = r'<i class="dm" title=".*">(.+)</i>';
+    regular4 = r'<i class="dm" title=".*" [^>]*>(.+)</i>'
     info4 = GetRE(content,regular4)
     #日期
-    regular5 = r'<i class="date" title=".*">(\d+-\d+-\d+ \d+:\d+)</i>';
+    regular5 = r'<i class="date" title=".*">(\d+-\d+-\d+ \d+:\d+)</i>'
     info5 = GetRE(content,regular5)
     #封面
-    regular6 = r'<img src="(.+)">';
+    regular6 = r'<img src="(.+)" [^>]*>'
     info6 = GetRE(content,regular6)
     #Up的id和名字
-    regular7 = r'<a class="up r10000" href="http://space\.bilibili\.com/(\d+)" target="_blank">(.+)</a>'
+    regular7 = r'<i class="up r10000">(.*)</i>'
     info7 = GetRE(content,regular7)
     #!!!!!!!!这里可以断言所有信息长度相等
-    vedioNum = len(info1);#视频长度
-    vedioList = [];
-    for i in range(vedioNum):
-        vedio_t = Vedio();
-        vedio_t.aid = getint(info1[i][0]);
-        vedio_t.title = info1[i][1];
-        vedio_t.guankan = getint(info2[i]);
-        vedio_t.shoucang = getint(info3[i]);
-        vedio_t.danmu = getint(info4[i]);
-        vedio_t.date = info5[i];
-        vedio_t.cover = info6[i];
-        vedio_t.author = User(info7[i][0],info7[i][1])
-        vedioList.append(vedio_t);
-    return vedioList
+    videoNum = len(info1)#视频长度
+    videoList = []
+    for i in range(videoNum):
+        video_t = Video()
+        video_t.aid = getint(info1[i][0])
+        video_t.title = info1[i][1]
+        video_t.guankan = getint(info2[i])
+        video_t.shoucang = getint(info3[i])
+        video_t.danmu = getint(info4[i])
+        video_t.date = info5[i]
+        video_t.cover = info6[i]
+        video_t.author = User(info7[i][0],info7[i][1])
+        videoList.append(video_t)
+    return videoList
+
+def GetSign(params, appkey, AppSecret=None):
+    """
+    获取新版API的签名，不然会返回-3错误
+    """
+    params['appkey']=appkey
+    data = ""
+    paras = params.keys()
+    paras.sort()
+    data = urllib.urlencode(params)
+    if AppSecret == None:
+        return data
+    m = hashlib.md5()
+    m.update(data+AppSecret)
+    return data+'&sign='+m.hexdigest()
+
+def ParseComment(danmu):
+    dom = xml.dom.minidom.parseString(danmu)
+    comment_element = dom.getElementsByTagName('d')
+    for i, comment in enumerate(comment_element):
+        p = str(comment.getAttribute('p')).split(',')
+        danmu = Danmu()
+        danmu.t_video = float(p[0])
+        danmu.danmu_type = int(p[1])
+        danmu.t_stamp = time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(float(p[4])))
+        danmu.mid_crc = p[6]
+        danmu.danmu_color = ConvertColor(int(p[3]))
+        if len(comment.childNodes) != 0:
+            danmu.content = str(comment.childNodes[0].wholeText).replace('/n', '\n')
+        else:
+            danmu.content = ""
+        yield danmu

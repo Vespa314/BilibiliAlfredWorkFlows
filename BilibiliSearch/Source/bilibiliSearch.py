@@ -6,26 +6,6 @@ from support import *
 import datetime
 import hashlib
 
-def GetSign(params, appkey, AppSecret=None):
-    """
-    获取新版API的签名，不然会返回-3错误
-待添加：【重要！】
-    需要做URL编码并保证字母都是大写，如 %2F
-    """
-    params['appkey']=appkey
-    data = ""
-    paras = params.keys()
-    paras.sort()
-    for para in paras:
-        if data != "":
-            data += "&"
-        data += para + "=" + str(params[para])
-    if AppSecret == None:
-        return data
-    m = hashlib.md5()
-    m.update(data+AppSecret)
-    return data+'&sign='+m.hexdigest()
-
 def biliVideoSearch(appkey, AppSecret, keyword, order = 'default', pagesize = 20, page = 1):
     """
 【注】：
@@ -40,15 +20,13 @@ def biliVideoSearch(appkey, AppSecret, keyword, order = 'default', pagesize = 20
     """
     paras = {}
     paras['keyword'] = GetString(keyword)
-    paras['order'] = GetString(order)
-    paras['pagesize'] = GetString(pagesize)
-    paras['page'] = GetString(page)
     url =  'http://api.bilibili.cn/search?' + GetSign(paras, appkey, AppSecret)
     jsoninfo = JsonInfo(url)
     videolist = []
     for video_idx in jsoninfo.Getvalue('result'):
         if video_idx['type'] != 'video':
             continue
+        video_idx = DictDecode2UTF8(video_idx)
         video = Video(video_idx['aid'], video_idx['title'])
         video.typename = video_idx['typename']
         video.author = User(video_idx['mid'], video_idx['author'])
