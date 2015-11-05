@@ -51,10 +51,11 @@ def GetBilibiliUrl(url):
     resp_media = getURLContent(url_get_media+GetSign(media_args,APPKEY,APPSEC))
     resp_media = dict(json.loads(resp_media.decode('utf-8', 'replace')))
     media_urls = resp_media.get('durl')
-    media_urls = media_urls[0]
-    media_urls = media_urls.get('url')
-    return media_urls
-    
+    res = []
+    for media_url in media_urls:
+        res.append(media_url.get('url'))
+    return res
+
 def GetSign(params,appkey,AppSecret=None):
     params['appkey']=appkey;
     data = "";
@@ -81,13 +82,15 @@ def ChangeFuck(params):
 
 fb = Feedback()
 url = '{query}'
-# url = 'http://www.bilibili.com/video/av3033822/'
+# url = 'http://www.bilibili.com/video/av2968792/'
 av = GetRE(url,r"\d+")[0]
 video = GetVideoInfo(av,appkey=APPKEY,AppSecret=APPSEC)
-downloadUrl = GetBilibiliUrl(url)
+downloadUrls = GetBilibiliUrl(url)
 # print video.title
-# print downloadUrl
+# for downloadUrl in downloadUrls:
+#     print downloadUrl
 
+for id,downloadUrl in enumerate(downloadUrls):
+    fb.add_item('获取'+url+'下载地址',subtitle="%s(%d P)"%(video.title,id+1),arg=downloadUrl)
 
-fb.add_item('获取'+url+'下载地址',subtitle=video.title,arg=downloadUrl)
 print fb
