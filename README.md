@@ -109,6 +109,18 @@ url加上视频URL地址即可，比如：
 
 > 注：如果出现多个下载url，最好不要使用这个方法，而采用you-get之类的会自动合并多个短视频的脚本。
 
+## 转化xml弹幕文件为ass文件
+关键字:`xml2ass`
+
+食用方法：
+直接xml2ass，会读取桌面xml文件供你选择，选中即转化为同名ass文件，拖入播放器即可。
+
+![image](https://github.com/Vespa314/BilibiliAlfredWorkFlows/raw/master/img/xml2ass.png)
+
+> 问题一：有了danmu这个Alfred为什么还要写这个？因为B站封appkey，danmu必须借助appkey+av号获取到视频的cid，才可以自动获取到xml文件，现在没有appkey的用户自然获取不到xml文件。
+> 问题二：那么如何获取xml文件呢？请使用[bilibili-mac-client](https://github.com/typcn/bilibili-mac-client)
+> 问题三：请问有了[bilibili-mac-client](https://github.com/typcn/bilibili-mac-client)，要你这个Alfred何用？额。。假设你能容忍暗牧的存在的话，或者B站有些视频低画质之类的。。。这个是没什么用。。
+
 ## 配合使用的系统设置
 首先完成以下三项配置：
 * [you-get](https://github.com/soimort/you-get)
